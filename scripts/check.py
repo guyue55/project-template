@@ -5,7 +5,7 @@ import os
 import re
 import subprocess
 import tomllib
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 
 ROOT = Path(__file__).resolve().parents[1]
 EXCLUDED = {
@@ -40,6 +40,28 @@ REQUIRED = {
 MESSAGE = re.compile(
     r"^(feat|fix|docs|test|refactor|perf|build|ci|chore|revert)\([a-z0-9][a-z0-9_.-]*\)!?: [^\r\n]+$"
 )
+
+
+def archive_path(name):
+    # 归档名称是POSIX路径；同时拒绝Windows驱动器与保留名，不依赖执行宿主。
+    path = PurePosixPath(name)
+    reserved = {"CON", "PRN", "AUX", "NUL"} | {
+        f"{prefix}{n}" for prefix in ("COM", "LPT") for n in range(1, 10)
+    }
+    if (
+        not path.parts
+        or path.is_absolute()
+        or PureWindowsPath(name).drive
+        or ".." in path.parts
+        or "\\" in name
+    ):
+        raise ValueError("归档存在危险路径")
+    if any(
+        part.rstrip(" .") != part or ":" in part or part.split(".")[0].upper() in reserved
+        for part in path.parts
+    ):
+        raise ValueError("归档路径不兼容Windows")
+    return path
 
 
 def message_valid(value):

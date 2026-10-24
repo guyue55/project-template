@@ -41,7 +41,14 @@ class RepositoryTests(unittest.TestCase):
     def test_unsafe_archive_member(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "sample.zip"
-            for member in ("../escape", "/absolute", "project/credentials/data.txt"):
+            for member in (
+                "../escape",
+                "/absolute",
+                "C:/absolute",
+                "C:relative",
+                "project/NUL.txt",
+                "project/credentials/data.txt",
+            ):
                 with zipfile.ZipFile(path, "w") as archive:
                     archive.writestr(member, "synthetic")
                 with self.assertRaises(ValueError):

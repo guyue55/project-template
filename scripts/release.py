@@ -9,7 +9,7 @@ import tarfile
 import zipfile
 from pathlib import Path
 
-from check import ROOT, git, sources, validate
+from check import ROOT, archive_path, git, sources, validate
 
 
 def digest(path):
@@ -31,8 +31,8 @@ def archive_check(path):
     else:
         return
     for name, size, special in members:
-        p = Path(name)
-        if p.is_absolute() or ".." in p.parts or "\\" in name or special or size > 20 * 1024 * 1024:
+        p = archive_path(name)
+        if special or size > 20 * 1024 * 1024:
             raise ValueError("归档存在危险成员")
         if any(
             part in {".git", ".venv", "runtime", "credentials", "secrets", "__pycache__"}
