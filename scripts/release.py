@@ -9,7 +9,7 @@ import tarfile
 import zipfile
 from pathlib import Path
 
-from check import ROOT, archive_path, git, sources, validate
+from check import EXCLUDED, ROOT, archive_path, git, sources, validate
 
 
 def digest(path):
@@ -34,10 +34,14 @@ def archive_check(path):
         p = archive_path(name)
         if special or size > 20 * 1024 * 1024:
             raise ValueError("归档存在危险成员")
-        if any(
-            part in {".git", ".venv", "runtime", "credentials", "secrets", "__pycache__"}
-            for part in p.parts
-        ) or (p.name.startswith(".env") and p.name != ".env.example"):
+        if (
+            any(
+                part in EXCLUDED | {"credentials", "secrets", "storage_data", "runs", "logs"}
+                for part in p.parts
+            )
+            or (p.name.startswith(".env") and p.name != ".env.example")
+            or p.suffix in {".pem", ".key", ".db", ".pyc", ".p12", ".pfx"}
+        ):
             raise ValueError("归档包含运行或秘密文件")
 
 
@@ -69,6 +73,8 @@ def verify(folder, commit=None):
         or kind not in {"library", "template"}
     ):
         raise ValueError("清单标识无效")
+    if data.get("tag") != "v" + version:
+        raise ValueError("Tag与版本不一致")
     if not re.fullmatch(r"[0-9a-f]{40}", data["source_commit"]) or (
         commit and commit != data["source_commit"]
     ):
@@ -97,7 +103,7 @@ def verify(folder, commit=None):
 
 
 def build(folder):
-    config, version = validate(dict(sources()))
+    config, version = validate(dict(sources(staged=True)))
     if git("status", "--porcelain").strip():
         raise ValueError("发布源码必须已提交且干净")
     folder.mkdir(parents=True, exist_ok=False)

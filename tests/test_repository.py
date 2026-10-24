@@ -54,6 +54,8 @@ class RepositoryTests(unittest.TestCase):
                 "C:relative",
                 "project/NUL.txt",
                 "project/credentials/data.txt",
+                "project/.mypy_cache/data.json",
+                "project/private.key",
             ):
                 with zipfile.ZipFile(path, "w") as archive:
                     archive.writestr(member, "synthetic")
@@ -71,6 +73,7 @@ class RepositoryTests(unittest.TestCase):
                 "name": name,
                 "version": version,
                 "kind": "template",
+                "tag": "v" + version,
                 "source_commit": sha,
                 "artifacts": {p.name: release.digest(p) for p in folder.iterdir()},
             }
@@ -79,6 +82,12 @@ class RepositoryTests(unittest.TestCase):
                 "".join(f"{release.digest(p)}  {p.name}\n" for p in sorted(folder.iterdir()))
             )
             release.verify(folder, sha)
+            manifest["tag"] = "v9.0.0"
+            (folder / "release-manifest.json").write_text(json.dumps(manifest))
+            with self.assertRaisesRegex(ValueError, "Tag与版本不一致"):
+                release.verify(folder, sha)
+            manifest["tag"] = "v" + version
+            (folder / "release-manifest.json").write_text(json.dumps(manifest))
             with self.assertRaises(ValueError):
                 release.verify(folder, "b" * 40)
             extra = folder / "unexpected.log"
