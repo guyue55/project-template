@@ -3,6 +3,7 @@ on:
   push:
     branches: [main, 'codex/**']
   pull_request:
+    types: [opened, synchronize, reopened, edited]
   workflow_dispatch:
   workflow_call:
 permissions:
