@@ -1,6 +1,7 @@
 """仓库卫生与中文提交校验；只读，无全局配置、网络或自动修复。"""
 
 import argparse
+import json
 import os
 import re
 import subprocess
@@ -67,6 +68,12 @@ def archive_path(name):
 def message_valid(value):
     first = value.splitlines()[0] if value.splitlines() else ""
     return bool(MESSAGE.fullmatch(first) and re.search(r"[\u4e00-\u9fff]", first))
+
+
+def check_event(event):
+    # 只读取PR标题作为数据，不把它插入Shell或执行；推送／手动任务无此字段。
+    if "pull_request" in event and not message_valid(event["pull_request"].get("title", "")):
+        raise ValueError("PR标题须为type(scope): 中文说明，避免squash产生不合规提交")
 
 
 def git(*args):
@@ -159,11 +166,15 @@ def validate(files):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--staged", action="store_true")
-    parser.add_argument("--message-file", type=Path)
-    parser.add_argument("--commit-range")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--staged", action="store_true")
+    mode.add_argument("--message-file", type=Path)
+    mode.add_argument("--commit-range")
+    mode.add_argument("--github-event", action="store_true")
     args = parser.parse_args()
-    if args.message_file:
+    if args.github_event:
+        check_event(json.loads(Path(os.environ["GITHUB_EVENT_PATH"]).read_text(encoding="utf-8")))
+    elif args.message_file:
         if not message_valid(args.message_file.read_text(encoding="utf-8")):
             raise ValueError("提交须为type(scope): 中文说明")
     elif args.commit_range:
