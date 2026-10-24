@@ -19,6 +19,12 @@ class RepositoryTests(unittest.TestCase):
         for text in ("fix: 错误", "fix(parser): english", "update", "fix(parser): "):
             self.assertFalse(check.message_valid(text))
 
+    def test_pull_request_title_matches_squash_policy(self):
+        check.check_event({})
+        check.check_event({"pull_request": {"title": "fix(parser): 拒绝重复键"}})
+        with self.assertRaises(ValueError):
+            check.check_event({"pull_request": {"title": "English title"}})
+
     def test_current_repository(self):
         check.validate(dict(check.sources()))
 
@@ -41,7 +47,14 @@ class RepositoryTests(unittest.TestCase):
     def test_unsafe_archive_member(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "sample.zip"
-            for member in ("../escape", "/absolute", "project/credentials/data.txt"):
+            for member in (
+                "../escape",
+                "/absolute",
+                "C:/absolute",
+                "C:relative",
+                "project/NUL.txt",
+                "project/credentials/data.txt",
+            ):
                 with zipfile.ZipFile(path, "w") as archive:
                     archive.writestr(member, "synthetic")
                 with self.assertRaises(ValueError):

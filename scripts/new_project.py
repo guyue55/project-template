@@ -7,7 +7,7 @@ import re
 import zipfile
 from pathlib import Path
 
-from check import ROOT, git
+from check import ROOT, archive_path, git
 
 
 def write(path, text):
@@ -29,13 +29,8 @@ def generate(output, name, owner):
     raw = git("archive", "--format=zip", "HEAD")
     with zipfile.ZipFile(io.BytesIO(raw)) as archive:
         for item in archive.infolist():
-            path = Path(item.filename)
-            if (
-                path.is_absolute()
-                or ".." in path.parts
-                or "\\" in item.filename
-                or (item.external_attr >> 16) & 0o170000 == 0o120000
-            ):
+            archive_path(item.filename)
+            if (item.external_attr >> 16) & 0o170000 == 0o120000:
                 raise ValueError("源归档含危险成员")
         output.mkdir(parents=True, exist_ok=False)
         archive.extractall(output)

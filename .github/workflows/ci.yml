@@ -3,6 +3,7 @@ on:
   push:
     branches: [main, 'codex/**']
   pull_request:
+    types: [opened, synchronize, reopened, edited]
   workflow_dispatch:
   workflow_call:
 permissions:
@@ -56,6 +57,7 @@ jobs:
           enable-cache: false
       - run: python scripts/check.py
       - run: python scripts/check.py --commit-range HEAD
+      - run: python scripts/check.py --github-event
       - run: uvx ruff==0.17.2 check .
       - run: uvx ruff==0.17.2 format --check .
       - run: python -m unittest discover -s tests -v
