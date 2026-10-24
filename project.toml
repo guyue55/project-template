@@ -1,0 +1,5 @@
+[project]
+name = "project-template"
+owner = "guyue55"
+kind = "template"
+description = "轻量通用GitHub开发仓库模板"
