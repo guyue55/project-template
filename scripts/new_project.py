@@ -10,6 +10,10 @@ from pathlib import Path
 from check import ROOT, git
 
 
+def write(path, text):
+    path.write_text(text, encoding="utf-8", newline="\n")
+
+
 def generate(output, name, owner):
     if not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", name):
         raise ValueError("项目名须为小写kebab-case")
@@ -40,19 +44,22 @@ def generate(output, name, owner):
             if not item.is_dir() and (item.external_attr >> 16) & 0o111:
                 target.chmod(0o755)
     # 仓库标识与本项目状态更新；不修改上游许可与来源，也不做全树品牌替换。
-    (output / "project.toml").write_text(
-        f'[project]\nname = {json.dumps(name)}\nowner = {json.dumps(owner)}\nkind = "template"\ndescription = "新项目，待按实际需求完善"\n'
+    write(
+        output / "project.toml",
+        f'[project]\nname = {json.dumps(name)}\nowner = {json.dumps(owner)}\nkind = "template"\ndescription = "新项目，待按实际需求完善"\n',
     )
-    (output / "VERSION").write_text("0.1.0\n")
-    (output / "CHANGELOG.md").write_text("# 变更记录\n\n## 0.1.0\n\n项目初始化，尚未发布。\n")
+    write(output / "VERSION", "0.1.0\n")
+    write(output / "CHANGELOG.md", "# 变更记录\n\n## 0.1.0\n\n项目初始化，尚未发布。\n")
     (output / "releases/v1.0.0.md").unlink(missing_ok=True)
-    (output / "releases/v0.1.0.md").write_text(
-        f"# {name} v0.1.0\n\n项目初始化。发布前填写真实能力、兼容、验证和限制，不继承模板验收。\n"
+    write(
+        output / "releases/v0.1.0.md",
+        f"# {name} v0.1.0\n\n项目初始化。发布前填写真实能力、兼容、验证和限制，不继承模板验收。\n",
     )
-    (output / "README.md").write_text(
+    write(
+        output / "README.md",
         f"# {name}\n\n待按实际需求完善定位、安装、使用和测试命令。当前仅含项目治理模板，不代表应用已经实现。\n\n"
         "先阅读 [AGENTS.md](AGENTS.md)、[贡献规范](CONTRIBUTING.md)、[安全](SECURITY.md) 与 [发版手册](docs/OPERATIONS.md)。\n\n"
-        "仓库检查：`python3 scripts/check.py`。按应用技术栈补充真实测试与CI门禁；初始化Git前检查公开边界与许可。\n"
+        "仓库检查：`python3 scripts/check.py`。按应用技术栈补充真实测试与CI门禁；初始化Git前检查公开边界与许可。\n",
     )
     print("PROJECT_GENERATED", output)
 

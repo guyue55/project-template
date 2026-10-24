@@ -61,7 +61,7 @@ def verify(folder, commit=None):
         or any(p.is_symlink() or not p.is_file() for p in folder.iterdir())
     ):
         raise ValueError("资产目录无效")
-    data = json.loads((folder / "release-manifest.json").read_text())
+    data = json.loads((folder / "release-manifest.json").read_text(encoding="utf-8"))
     name, version, kind = data["name"], data["version"], data["kind"]
     if (
         not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", name)
@@ -77,7 +77,7 @@ def verify(folder, commit=None):
     if names != expected(name, version, kind):
         raise ValueError("发布资产不符合白名单")
     checksums = {}
-    for line in (folder / "SHA256SUMS").read_text().splitlines():
+    for line in (folder / "SHA256SUMS").read_text(encoding="utf-8").splitlines():
         value, filename = line.split("  ", 1)
         if filename in checksums or not re.fullmatch(r"[a-f0-9]{64}", value):
             raise ValueError("摘要清单无效")
@@ -107,6 +107,12 @@ def build(folder):
     (folder / f"{name}-source-{version}.zip").write_bytes(archive)
     if kind == "library":
         subprocess.run(["uv", "build", "--out-dir", str(folder)], cwd=ROOT, check=True)
+    marker = folder / ".gitignore"
+    if marker.exists():
+        # uv build 自动生成的输出目录标记，不属于发行资产。
+        if marker.read_bytes() not in {b"*", b"*\n"}:
+            raise ValueError("构建产生了未知忽略标记")
+        marker.unlink()
     (folder / "RELEASE_NOTES.md").write_bytes(
         (ROOT / "releases" / ("v" + version + ".md")).read_bytes()
     )
@@ -120,10 +126,12 @@ def build(folder):
         "artifacts": files,
     }
     (folder / "release-manifest.json").write_text(
-        json.dumps(manifest, ensure_ascii=False, indent=2) + "\n"
+        json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8", newline="\n"
     )
     (folder / "SHA256SUMS").write_text(
-        "".join(f"{digest(p)}  {p.name}\n" for p in sorted(folder.iterdir()))
+        "".join(f"{digest(p)}  {p.name}\n" for p in sorted(folder.iterdir())),
+        encoding="utf-8",
+        newline="\n",
     )
     verify(folder, sha)
 
